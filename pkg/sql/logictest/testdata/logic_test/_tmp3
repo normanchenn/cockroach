@@ -1,0 +1,162 @@
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE TABLE a (
+  a INT PRIMARY KEY,
+  b TEXT NOT NULL
+) WITH (fillfactor=10, fillfactor=15);
+
+statement ok
+CREATE TABLE a (
+  a INT PRIMARY KEY,
+  b TEXT NOT NULL
+) WITH (fillfactor=10);
+
+statement error pgcode 22023 pq: parameter "bucket_count" specified more than once
+ALTER TABLE a ALTER PRIMARY KEY USING COLUMNS (b) USING HASH WITH (bucket_count=30, bucket_count=20);
+
+statement ok
+ALTER TABLE a ALTER PRIMARY KEY USING COLUMNS (b) USING HASH WITH (bucket_count=30);
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+ALTER TABLE a SET (fillfactor=20, fillfactor=30);
+
+statement ok
+ALTER TABLE a SET (fillfactor=20);
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE TABLE IF NOT EXISTS b (a INT) WITH (fillfactor=10, fillfactor=20);
+
+statement ok
+CREATE TABLE IF NOT EXISTS b (a INT) WITH (fillfactor=10);
+
+statement ok
+INSERT INTO b VALUES (1), (2), (3);
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE TABLE c (a) WITH (fillfactor=10, fillfactor=20) AS (SELECT * FROM b);
+
+statement ok
+CREATE TABLE c (a) WITH (fillfactor=10) AS (SELECT * FROM b);
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE TABLE IF NOT EXISTS d (a) WITH (fillfactor=10, fillfactor=20) AS (SELECT * FROM c);
+
+statement ok
+CREATE TABLE IF NOT EXISTS d (a) WITH (fillfactor=10) AS (SELECT * FROM c);
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE TABLE e (a INT PRIMARY KEY WITH (fillfactor=10, fillfactor=20));
+
+# this one should work?
+statement ok
+CREATE TABLE e (a INT PRIMARY KEY WITH (fillfactor=10));
+
+statement error pgcode 22023 pq: parameter "bucket_count" specified more than once
+CREATE TABLE f (a INT PRIMARY KEY USING HASH WITH (bucket_count=10, bucket_count=20));
+
+statement ok
+CREATE TABLE f (a INT PRIMARY KEY USING HASH WITH (bucket_count=10));
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE TABLE g (
+  a INT PRIMARY KEY,
+  b INT,
+  INDEX (b) WITH (fillfactor=10, fillfactor=20)
+);
+
+statement ok
+CREATE TABLE g (
+  a INT PRIMARY KEY,
+  b INT,
+  INDEX (b) WITH (fillfactor=10)
+);
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE TABLE h (
+  a INT PRIMARY KEY,
+  b INT,
+  UNIQUE b_idx (b) WITH (fillfactor=10, fillfactor=20)
+);
+
+statement ok
+CREATE TABLE h (
+  a INT PRIMARY KEY,
+  b INT,
+  UNIQUE b_idx (b) WITH (fillfactor=10)
+);
+
+statement error pgcode 22023 pq: parameter "bucket_count" specified more than once
+CREATE TABLE i (
+  a INT PRIMARY KEY,
+  b INT,
+  UNIQUE INDEX (b) USING HASH WITH (bucket_count=10, bucket_count=20)
+);
+
+statement ok
+CREATE TABLE i (
+  a INT PRIMARY KEY,
+  b INT,
+  UNIQUE INDEX (b) USING HASH WITH (bucket_count=10)
+);
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE TABLE j (
+  a INT PRIMARY KEY,
+  b JSONB,
+  INVERTED INDEX (b) WITH (fillfactor=10, fillfactor=20)
+);
+
+statement ok
+CREATE TABLE j (
+  a INT PRIMARY KEY,
+  b JSONB,
+  INVERTED INDEX (b) WITH (fillfactor=10)
+);
+
+statement error pgcode 22023 pq: parameter "bucket_count" specified more than once
+CREATE TABLE k (
+  a INT,
+  PRIMARY KEY (a) USING HASH WITH (bucket_count=10, bucket_count=20)
+);
+
+statement ok
+CREATE TABLE k (
+  a INT,
+  PRIMARY KEY (a) USING HASH WITH (bucket_count=10)
+);
+
+statement ok
+CREATE TABLE l (
+  a INT PRIMARY KEY,
+  b INT
+);
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE INDEX idx_a ON l (b) WITH (fillfactor=10, fillfactor=20);
+
+statement ok
+CREATE INDEX idx_a ON l (b) WITH (fillfactor=10);
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE INDEX IF NOT EXISTS idx_b ON l (b) WITH (fillfactor=10, fillfactor=20);
+
+statement ok
+CREATE INDEX IF NOT EXISTS idx_b ON l (b) WITH (fillfactor=10);
+
+statement ok
+CREATE TABLE m (
+  a INT PRIMARY KEY,
+  b JSONB
+);
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE INVERTED INDEX idx_c ON m (b) WITH (fillfactor=10, fillfactor=20);
+
+statement ok
+CREATE INVERTED INDEX idx_c ON m (b) WITH (fillfactor=10);
+
+statement error pgcode 22023 pq: parameter "fillfactor" specified more than once
+CREATE INVERTED INDEX IF NOT EXISTS idx_d ON m (b) WITH (fillfactor=10, fillfactor=20);
+
+statement ok
+CREATE INVERTED INDEX IF NOT EXISTS idx_d ON m (b) WITH (fillfactor=10);
+

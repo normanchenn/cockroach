@@ -10689,7 +10689,16 @@ storage_parameter_key_list:
   }
 | storage_parameter_key_list ',' storage_parameter_key
   {
-    $$.val = append($1.storageParamKeys(), $3)
+    paramKeys := $1.storageParamKeys()
+    paramKey := $3
+    for _, key := range paramKeys {
+      if key == paramKey {
+        err := pgerror.Newf(pgcode.InvalidParameterValue, "parameter %q specified more than once", key)
+        sqllex.Error(err.Error())
+        return 1
+      }
+    }
+    $$.val = append(paramKeys, paramKey)
   }
 
 storage_parameter:
@@ -10705,7 +10714,16 @@ storage_parameter_list:
   }
 |  storage_parameter_list ',' storage_parameter
   {
-    $$.val = append($1.storageParams(), $3.storageParam())
+    storageParams := $1.storageParams()
+    storageParam := $3.storageParam()
+    for _, param := range storageParams {
+      if param.Key == storageParam.Key {
+        err := pgerror.Newf(pgcode.InvalidParameterValue, "parameter %q specified more than once", param.Key)
+        sqllex.Error(err.Error())
+        return 1
+      }
+    }
+    $$.val = append(storageParams, storageParam)
   }
 
 create_table_as_stmt:
