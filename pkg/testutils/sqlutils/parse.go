@@ -60,7 +60,7 @@ func parseOne(t *testing.T, input string, p Parser) (tree.NodeFormatter, error) 
 	return nil, fmt.Errorf("unreachable code")
 }
 
-// VerifyParseFormat is used in the SQL and PL/pgSQL datadriven parser tests to
+// VerifyParseFormat is used in the SQL and PL/pgSQL and datadriven parser tests to
 // check that a successfully parsed expression round trips and correctly handles
 // formatting flags.
 //
