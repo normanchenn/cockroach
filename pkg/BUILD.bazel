@@ -2099,6 +2099,7 @@ GO_TARGETS = [
     "//pkg/sql/paramparse:paramparse",
     "//pkg/sql/parser/fuzz:fuzz",
     "//pkg/sql/parser/statements:statements",
+    "//pkg/sql/parser/util:util",
     "//pkg/sql/parser:parser",
     "//pkg/sql/parser:parser_test",
     "//pkg/sql/pgrepl/lsn:lsn",

@@ -8,7 +8,7 @@ package parser
 import (
 	"strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
+	parserUtil "github.com/cockroachdb/cockroach/pkg/sql/parser/util"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
@@ -88,7 +88,7 @@ func (l *lexer) Error(s string) {
 	s = strings.TrimPrefix(s, "syntax error: ") // we'll add it again below.
 	err := pgerror.WithCandidateCode(errors.Newf("%s", s), pgcode.Syntax)
 	lastTok := l.lastToken()
-	l.lastError = parser.PopulateErrorDetails(lastTok.id, lastTok.str, lastTok.pos, err, l.in)
+	l.lastError = parserUtil.PopulateErrorDetails(lastTok.id, lastTok.str, lastTok.pos, err, l.in, ERROR)
 }
 
 func (l *lexer) SetJsonpath(expr jsonpath.Jsonpath) {

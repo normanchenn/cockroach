@@ -5,26 +5,18 @@ SELECT pg_typeof(JSONPATH '$.a')
 ----
 jsonpath
 
+statement error pq: could not parse "" as type jsonpath: at or near "EOF": syntax error
+SELECT ''::JSONPATH
+
 query T
 SELECT '$.a'::JSONPATH
 ----
 $.a
 
-statement error pq: value type jsonpath cannot be used for table columns
-CREATE TABLE a (j JSONPATH)
-
-statement error pq: value type jsonpath cannot be used for table columns
-CREATE TABLE a (j JSONPATH[])
-
 query T
 SELECT '$'::JSONPATH
 ----
 $
-
-query T
-SELECT '$.*'::JSONPATH
-----
-$.*
 
 query T
 SELECT 'strict $'::JSONPATH
@@ -34,67 +26,7 @@ strict $
 query T
 SELECT 'lax $'::JSONPATH
 ----
-lax $
-
-query T
-SELECT '$.1a[*]'::JSONPATH
-----
-$.1a[*]
-
-query T
-SELECT '$.a1[*]'::JSONPATH
-----
-$.a1[*]
-
-query T
-SELECT '$.a[*] ? (@.b == 1 && @.c != 1)'::JSONPATH
-----
-$.a[*] ? (@.b == 1 && @.c != 1)
-
-query T
-SELECT '$.a[*] ? (@.b != 1)'::JSONPATH
-----
-$.a[*] ? (@.b != 1)
-
-query T
-SELECT '$.a[*] ? (@.b < 1)'::JSONPATH
-----
-$.a[*] ? (@.b < 1)
-
-query T
-SELECT '$.a[*] ? (@.b <= 1)'::JSONPATH
-----
-$.a[*] ? (@.b <= 1)
-
-query T
-SELECT '$.a[*] ? (@.b > 1)'::JSONPATH
-----
-$.a[*] ? (@.b > 1)
-
-query T
-SELECT '$.a[*] ? (@.b >= 1)'::JSONPATH
-----
-$.a[*] ? (@.b >= 1)
-
-query T
-SELECT '$.a ? (@.b == 1).c ? (@.d == 2)'::JSONPATH
-----
-$.a ? (@.b == 1).c ? (@.d == 2)
-
-query T
-SELECT '$.a?(@.b==1).c?(@.d==2)'::JSONPATH
-----
-$.a?(@.b==1).c?(@.d==2)
-
-query T
-SELECT '$  .  a  ?  (  @  .  b  ==  1  )  .  c  ?  (  @  .  d  ==  2  )  '::JSONPATH
-----
-$  .  a  ?  (  @  .  b  ==  1  )  .  c  ?  (  @  .  d  ==  2  )
-
-query T
-SELECT '$.a.type()'::JSONPATH
-----
-$.a.type()
+$
 
 query B
 SELECT '$'::JSONPATH IS NULL
@@ -106,7 +38,7 @@ SELECT '$'::JSONPATH IS NOT NULL
 ----
 true
 
-statement error invalid jsonpath
+statement error pq: could not parse "" as type jsonpath: at or near "EOF": syntax error
 SELECT ''::JSONPATH
 
 statement error pq: unsupported comparison operator: jsonpath IS NOT DISTINCT FROM jsonpath
@@ -125,25 +57,94 @@ SELECT '$'::JSONPATH IS DISTINCT FROM NULL
 ----
 true
 
+statement error pq: could not parse "\$\." as type jsonpath: at or near "EOF": syntax error
+SELECT '$.'::JSONPATH
+
+statement error pq: could not parse "word \$" as type jsonpath: at or near "word": syntax error
+SELECT 'word $'::JSONPATH
+
+## Jsonpath not supported yet
+
+# query T
+# SELECT '$.*'::JSONPATH
+# ----
+# $.*
+
+# query T
+# SELECT '$.1a[*]'::JSONPATH
+# ----
+# $.1a[*]
+
+# query T
+# SELECT '$.a1[*]'::JSONPATH
+# ----
+# $.a1[*]
+
+# query T
+# SELECT '$.a[*] ? (@.b == 1 && @.c != 1)'::JSONPATH
+# ----
+# $.a[*] ? (@.b == 1 && @.c != 1)
+
+# query T
+# SELECT '$.a[*] ? (@.b != 1)'::JSONPATH
+# ----
+# $.a[*] ? (@.b != 1)
+
+# query T
+# SELECT '$.a[*] ? (@.b < 1)'::JSONPATH
+# ----
+# $.a[*] ? (@.b < 1)
+
+# query T
+# SELECT '$.a[*] ? (@.b <= 1)'::JSONPATH
+# ----
+# $.a[*] ? (@.b <= 1)
+
+# query T
+# SELECT '$.a[*] ? (@.b > 1)'::JSONPATH
+# ----
+# $.a[*] ? (@.b > 1)
+
+# query T
+# SELECT '$.a[*] ? (@.b >= 1)'::JSONPATH
+# ----
+# $.a[*] ? (@.b >= 1)
+
+# query T
+# SELECT '$.a ? (@.b == 1).c ? (@.d == 2)'::JSONPATH
+# ----
+# $.a ? (@.b == 1).c ? (@.d == 2)
+
+# query T
+# SELECT '$.a?(@.b==1).c?(@.d==2)'::JSONPATH
+# ----
+# $.a?(@.b==1).c?(@.d==2)
+
+# query T
+# SELECT '$  .  a  ?  (  @  .  b  ==  1  )  .  c  ?  (  @  .  d  ==  2  )  '::JSONPATH
+# ----
+# $  .  a  ?  (  @  .  b  ==  1  )  .  c  ?  (  @  .  d  ==  2  )
+
+# query T
+# SELECT '$.a.type()'::JSONPATH
+# ----
+# $.a.type()
+
+# query T
+# SELECT '$a'::JSONPATH;
+# ----
+# $a
+
+statement error pq: value type jsonpath cannot be used for table columns
+CREATE TABLE a (j JSONPATH)
+
+statement error pq: value type jsonpath cannot be used for table columns
+CREATE TABLE a (j JSONPATH[])
+
+## Come back when we support creating tables with jsonpath columns
+
 # statement ok
 # SELECT * FROM a WHERE j IS NULL
-
-## Jsonpath checks that shouldn't work when the type is fully implemented
-
-query T
-SELECT '$.'::JSONPATH
-----
-$.
-
-query T
-SELECT 'word $'::JSONPATH
-----
-word $
-
-query T
-SELECT '$a'::JSONPATH;
-----
-$a
 
 # statement ok
 # INSERT INTO a VALUES ('$.something'), ('$.other.thing'), ('$.another.thing'), ('$.a[*].b.c[*]')

@@ -54,6 +54,7 @@ type Key struct {
 	Key string
 }
 
+// TODO(normanchenn): Consider wrapping key with quotes.
 func (k Key) String() string { return "." + k.Key }
 
 // Satisfies Accessor interface.

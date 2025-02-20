@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
+	parserUtil "github.com/cockroachdb/cockroach/pkg/sql/parser/util"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/plpgsqltree"
@@ -544,7 +545,7 @@ func (l *lexer) setErr(err error) {
 	err = pgerror.WithCandidateCode(err, pgcode.Syntax)
 	l.lastError = err
 	lastTok := l.lastToken()
-	l.lastError = parser.PopulateErrorDetails(lastTok.id, lastTok.str, lastTok.pos, l.lastError, l.in)
+	l.lastError = parserUtil.PopulateErrorDetails(lastTok.id, lastTok.str, lastTok.pos, l.lastError, l.in, ERROR)
 }
 
 // setErrNoDetails is similar to setErr, but is used for an error that should
@@ -561,14 +562,14 @@ func (l *lexer) Error(e string) {
 	e = strings.TrimPrefix(e, "syntax error: ") // we'll add it again below.
 	err := pgerror.WithCandidateCode(errors.Newf("%s", e), pgcode.Syntax)
 	lastTok := l.lastToken()
-	l.lastError = parser.PopulateErrorDetails(lastTok.id, lastTok.str, lastTok.pos, err, l.in)
+	l.lastError = parserUtil.PopulateErrorDetails(lastTok.id, lastTok.str, lastTok.pos, err, l.in, ERROR)
 }
 
 // Unimplemented wraps Error, setting lastUnimplementedError.
 func (l *lexer) Unimplemented(feature string) {
 	l.lastError = unimp.New(feature, "this syntax")
 	lastTok := l.lastToken()
-	l.lastError = parser.PopulateErrorDetails(lastTok.id, lastTok.str, lastTok.pos, l.lastError, l.in)
+	l.lastError = parserUtil.PopulateErrorDetails(lastTok.id, lastTok.str, lastTok.pos, l.lastError, l.in, ERROR)
 	l.lastError = &tree.UnsupportedError{
 		Err:         l.lastError,
 		FeatureName: feature,

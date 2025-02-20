@@ -36,6 +36,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/encoding"
 	"github.com/cockroachdb/cockroach/pkg/util/ipaddr"
 	"github.com/cockroachdb/cockroach/pkg/util/json"
+	jsonpath "github.com/cockroachdb/cockroach/pkg/util/jsonpath/parser"
 	"github.com/cockroachdb/cockroach/pkg/util/stringencoding"
 	"github.com/cockroachdb/cockroach/pkg/util/timeofday"
 	"github.com/cockroachdb/cockroach/pkg/util/timetz"
@@ -3953,10 +3954,11 @@ func (d *DJsonpath) Format(ctx *FmtCtx) {
 }
 
 func ParseDJsonpath(s string) (Datum, error) {
-	if s == "" {
-		return nil, MakeParseError("invalid jsonpath", types.Jsonpath, nil)
+	jp, err := jsonpath.Parse(s)
+	if err != nil {
+		return nil, MakeParseError(s, types.Jsonpath, err)
 	}
-	return NewDJsonpath(s), nil
+	return NewDJsonpath(jp.String()), nil
 }
 
 // DJSON is the JSON Datum.
