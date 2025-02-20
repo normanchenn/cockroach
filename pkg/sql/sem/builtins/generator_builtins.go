@@ -41,6 +41,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/duration"
 	"github.com/cockroachdb/cockroach/pkg/util/envutil"
 	"github.com/cockroachdb/cockroach/pkg/util/json"
+	jsonpath "github.com/cockroachdb/cockroach/pkg/util/jsonpath/eval"
 	"github.com/cockroachdb/cockroach/pkg/util/mon"
 	"github.com/cockroachdb/cockroach/pkg/util/randident"
 	"github.com/cockroachdb/cockroach/pkg/util/randident/randidentcfg"
@@ -429,6 +430,8 @@ var generators = map[string]builtinDefinition{
 	"jsonb_to_record":    makeBuiltin(recordGenProps(), jsonToRecordImpl),
 	"json_to_recordset":  makeBuiltin(recordGenProps(), jsonToRecordSetImpl),
 	"jsonb_to_recordset": makeBuiltin(recordGenProps(), jsonToRecordSetImpl),
+
+	"jsonb_path_query": makeBuiltin(jsonpathProps(), jsonbPathQueryImpl),
 
 	"crdb_internal.check_consistency": makeBuiltin(
 		tree.FunctionProperties{
@@ -1489,6 +1492,17 @@ var jsonArrayElementsTextImpl = makeGeneratorOverload(
 	volatility.Immutable,
 )
 
+var jsonbPathQueryImpl = makeGeneratorOverload(
+	tree.ParamTypes{
+		{Name: "target", Typ: types.Jsonb},
+		{Name: "path", Typ: types.Jsonpath},
+	},
+	jsonPathQueryGeneratorType,
+	makeJsonpathQueryGenerator,
+	"Returns all JSON items returned by the JSON path for the specified JSON value.",
+	volatility.Immutable,
+)
+
 var jsonArrayGeneratorLabels = []string{"value"}
 var jsonArrayGeneratorType = types.Jsonb
 
@@ -1576,6 +1590,58 @@ var jsonObjectKeysImpl = makeGeneratorOverload(
 	"Returns sorted set of keys in the outermost JSON object.",
 	volatility.Immutable,
 )
+
+var jsonPathQueryGeneratorType = types.Jsonb
+
+type jsonPathQueryGenerator struct {
+	target tree.DJSON
+	path   tree.DJsonpath
+
+	res     []tree.DJSON
+	iterIdx int
+}
+
+func makeJsonpathQueryGenerator(
+	_ context.Context, _ *eval.Context, args tree.Datums,
+) (eval.ValueGenerator, error) {
+	target := tree.MustBeDJSON(args[0])
+	path := tree.MustBeDJsonpath(args[1])
+	return &jsonPathQueryGenerator{
+		target: target,
+		path:   path,
+	}, nil
+}
+
+// ResolvedType implements the eval.ValueGenerator interface.
+func (g *jsonPathQueryGenerator) ResolvedType() *types.T {
+	return jsonPathQueryGeneratorType
+}
+
+// Start implements the eval.ValueGenerator interface.
+func (g *jsonPathQueryGenerator) Start(_ context.Context, _ *kv.Txn) error {
+	jsonb, err := jsonpath.JsonpathQuery(g.target, g.path)
+	if err != nil {
+		return err
+	}
+	g.res = jsonb
+	g.iterIdx = 0
+	return nil
+}
+
+// Close implements the eval.ValueGenerator interface.
+func (g *jsonPathQueryGenerator) Close(_ context.Context) {}
+
+// Next implements the eval.ValueGenerator interface.
+func (g *jsonPathQueryGenerator) Next(_ context.Context) (bool, error) {
+	g.iterIdx++
+	return g.iterIdx <= len(g.res), nil
+}
+
+// Values implements the eval.ValueGenerator interface.
+func (g *jsonPathQueryGenerator) Values() (tree.Datums, error) {
+	jp := g.res[g.iterIdx-1]
+	return tree.Datums{tree.NewDJSON(jp.JSON)}, nil
+}
 
 var jsonObjectKeysGeneratorType = types.String
 
@@ -1757,6 +1823,12 @@ func (g *jsonEachGenerator) Values() (tree.Datums, error) {
 
 var jsonPopulateProps = tree.FunctionProperties{
 	Category: builtinconstants.CategoryJSON,
+}
+
+func jsonpathProps() tree.FunctionProperties {
+	return tree.FunctionProperties{
+		Category: builtinconstants.CategoryJsonpath,
+	}
 }
 
 func makeJSONPopulateImpl(gen eval.GeneratorWithExprsOverload, info string) tree.Overload {

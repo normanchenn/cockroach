@@ -1262,6 +1262,15 @@ available replica will error.</p>
 </span></td><td>Stable</td></tr></tbody>
 </table>
 
+### Jsonpath functions
+
+<table>
+<thead><tr><th>Function &rarr; Returns</th><th>Description</th><th>Volatility</th></tr></thead>
+<tbody>
+<tr><td><a name="jsonb_path_query"></a><code>jsonb_path_query(target: jsonb, path: jsonpath) &rarr; jsonb</code></td><td><span class="funcdesc"><p>Returns all JSON items returned by the JSON path for the specified JSON value.</p>
+</span></td><td>Immutable</td></tr></tbody>
+</table>
+
 ### Multi-region functions
 
 <table>
