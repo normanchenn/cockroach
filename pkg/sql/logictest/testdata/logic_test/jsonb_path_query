@@ -144,3 +144,22 @@ true
 false
 0.1
 10
+
+query T
+SELECT jsonb_path_query('{"a": [1, 3, 5]}', '$.a[2]')
+----
+5
+
+query T
+SELECT jsonb_path_query('{"a": [1, 3, 5]}', '$.a[3]')
+----
+
+
+statement error pq: JSON array does not contain index 3
+SELECT jsonb_path_query('{"a": [1, 3, 5]}', 'strict $.a[3]')
+
+query T rowsort
+SELECT jsonb_path_query('{"a": [[9, 8, 7], [6, 5], [4]]}', '$.a[*][1]')
+----
+8
+5

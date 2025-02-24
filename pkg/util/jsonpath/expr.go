@@ -61,3 +61,10 @@ func (k Key) String() string { return "." + k.Key }
 type Wildcard struct{}
 
 func (w Wildcard) String() string { return "[*]" }
+
+// Satisfies Accessor interface.
+type ArrayIndex struct {
+	Index int
+}
+
+func (a ArrayIndex) String() string { return fmt.Sprintf("[%d]", a.Index) }

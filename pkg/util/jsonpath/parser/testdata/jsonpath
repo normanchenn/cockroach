@@ -105,3 +105,34 @@ parse
 $.a1
 ----
 $.a1
+
+parse
+$.a[1]
+----
+$.a[1]
+
+parse
+$.a[1]
+----
+$.a[1]
+
+parse
+$.a[100]
+----
+$.a[100]
+
+parse
+$.a[*][1]
+----
+$.a[*][1]
+
+# need to refactor the grammar
+# parse
+# $.a[-1]
+# ----
+# $.a[-1]
+
+# error
+# $.a[1.1]
+# ----
+# floats not supported

@@ -69,6 +69,30 @@ func JsonpathQuery(target tree.DJSON, path tree.DJsonpath) ([]tree.DJSON, error)
 				}
 			}
 			res = cur
+		case jsonpath.ArrayIndex:
+			var cur []tree.DJSON
+			for _, r := range res {
+				if r.JSON.Type() != json.ArrayJSONType {
+					if jp.Strict {
+						return []tree.DJSON{}, pgerror.Newf(pgcode.KeyNotInJSON,
+							"cannot index JSON object")
+					}
+					continue
+				}
+				c, err := r.JSON.FetchValIdx(a.Index)
+				if err != nil {
+					return []tree.DJSON{}, err
+				}
+				if c == nil {
+					if jp.Strict {
+						return []tree.DJSON{}, pgerror.Newf(pgcode.KeyNotInJSON,
+							"JSON array does not contain index %d", a.Index)
+					}
+					continue
+				}
+				cur = append(cur, tree.DJSON{JSON: c})
+			}
+			res = cur
 		default:
 			return []tree.DJSON{}, UnknownTypeError
 		}

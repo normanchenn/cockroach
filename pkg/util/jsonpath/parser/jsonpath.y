@@ -2,6 +2,9 @@
 package parser
 
 import (
+  "fmt"
+  "strconv"
+
   "github.com/cockroachdb/cockroach/pkg/util/jsonpath"
   "github.com/cockroachdb/cockroach/pkg/sql/scanner"
 )
@@ -86,6 +89,14 @@ func (u *jsonpathSymUnion) bool() bool {
   return u.val.(bool)
 }
 
+func (u *jsonpathSymUnion) arrayIndex() jsonpath.ArrayIndex {
+  return u.val.(jsonpath.ArrayIndex)
+}
+
+func (u *jsonpathSymUnion) int() int {
+  return u.val.(int)
+}
+
 %}
 
 %union{
@@ -112,19 +123,24 @@ func (u *jsonpathSymUnion) bool() bool {
 
 %token <str> STRICT
 %token <str> LAX
+%token <str> INTEGER
 
-%type <jsonpath.Jsonpath> jsonpath
-%type <jsonpath.Query> expr_or_predicate
-%type <jsonpath.Query> expr
-%type <jsonpath.Query> accessor_expr
+%type <jsonpath.JsonpathExpr> jsonpath
+%type <jsonpath.JsonpathExpr> expr_or_predicate
+%type <jsonpath.JsonpathExpr> expr
+%type <jsonpath.JsonpathExpr> accessor_expr
 %type <jsonpath.Accessor> accessor_op
-%type <jsonpath.Root> path_primary
-%type <jsonpath.Key> key
+%type <jsonpath.Accessor> path_primary
+%type <jsonpath.Accessor> key
 %type <str> key_name
-%type <jsonpath.Wildcard> array_accessor
+%type <jsonpath.Accessor> array_accessor
 %type <str> any_identifier
 %type <str> unreserved_keyword
 %type <bool> mode
+%type <jsonpath.Accessor> index_list
+%type <jsonpath.Accessor> index_elem
+// this will change.
+%type <int> scalar_value
 
 %%
 
@@ -179,7 +195,7 @@ accessor_op:
     }
     |
     array_accessor {
-        $$.val = $1.wildcard()
+        $$.val = $1.accessor()
     }
     ;
 
@@ -198,6 +214,37 @@ key_name:
 array_accessor:
     '[' '*' ']' {
         $$.val = jsonpath.Wildcard{}
+    }
+    |
+    '[' index_list ']' {
+        $$.val = $2.arrayIndex()
+    }
+    ;
+
+index_list:
+    index_elem {
+        $$.val = jsonpath.ArrayIndex{Index: $1.int()}
+    }
+    ;
+
+index_elem:
+    // this diverges from pg impl.
+    scalar_value {
+        $$.val = $1.int()
+    }
+    ;
+
+scalar_value:
+    INTEGER {
+        num, err := strconv.Atoi($1)
+        if err != nil {
+            panic(fmt.Sprintf("invalid number: %q", $1))
+        }
+        $$.val = num
+    }
+    |
+    FCONST {
+        panic("floats not supported")
     }
     ;
 
