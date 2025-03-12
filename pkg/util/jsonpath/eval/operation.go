@@ -6,6 +6,10 @@
 package eval
 
 import (
+	"math"
+
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/util/json"
 	"github.com/cockroachdb/cockroach/pkg/util/jsonpath"
@@ -71,6 +75,9 @@ func (ctx *jsonpathCtx) evalOperation(
 			return nil, err
 		}
 		return convertFromBool(res), nil
+	case jsonpath.OpAdd, jsonpath.OpSub, jsonpath.OpMult,
+		jsonpath.OpDiv, jsonpath.OpMod:
+		return ctx.evalArithmetic(p, current)
 	default:
 		panic(errors.AssertionFailedf("unhandled operation type"))
 	}
@@ -235,4 +242,56 @@ func execComparison(l, r tree.DJSON, op jsonpath.OperationType) (jsonpathBool, e
 		return jsonpathBoolTrue, nil
 	}
 	return jsonpathBoolFalse, nil
+}
+
+func (ctx *jsonpathCtx) evalArithmetic(
+	p jsonpath.Operation, current []tree.DJSON,
+) ([]tree.DJSON, error) {
+	left, err := ctx.eval(p.Left, current)
+	if err != nil {
+		return nil, err
+	}
+	right, err := ctx.eval(p.Right, current)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(left) != 1 || left[0].JSON.Type() != json.NumberJSONType {
+		return nil, pgerror.Newf(pgcode.SingletonSQLJSONItemRequired, "left operand of jsonpath operator %s is not a single numeric value", p.Type)
+	}
+	if len(right) != 1 || right[0].JSON.Type() != json.NumberJSONType {
+		return nil, pgerror.Newf(pgcode.SingletonSQLJSONItemRequired, "right operand of jsonpath operator %s is not a single numeric value", p.Type)
+	}
+
+	// TODO(normanchenn): do arithmetic properly.
+	leftNum, _ := left[0].JSON.AsDecimal()
+	rightNum, _ := right[0].JSON.AsDecimal()
+
+	leftFloat, err := leftNum.Float64()
+	if err != nil {
+		return nil, err
+	}
+	rightFloat, err := rightNum.Float64()
+	if err != nil {
+		return nil, err
+	}
+
+	var res float64
+	switch p.Type {
+	case jsonpath.OpAdd:
+		res = leftFloat + rightFloat
+	case jsonpath.OpSub:
+		res = leftFloat - rightFloat
+	case jsonpath.OpMult:
+		res = leftFloat * rightFloat
+	case jsonpath.OpDiv:
+		res = leftFloat / rightFloat
+	case jsonpath.OpMod:
+		res = math.Mod(leftFloat, rightFloat)
+	}
+	j, err := json.FromFloat64(res)
+	if err != nil {
+		return nil, err
+	}
+	return []tree.DJSON{{JSON: j}}, nil
 }

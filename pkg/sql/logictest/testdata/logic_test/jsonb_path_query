@@ -588,6 +588,51 @@ SELECT jsonb_path_query('{"a": 5, "b": 10}', '(1.5 > 1.2 && (!($.a == 1) || $.b 
 ----
 true
 
+query T
+SELECT jsonb_path_query('{}', '1 + 2');
+----
+3
+
+query T
+SELECT jsonb_path_query('{}', '1 - 2');
+----
+-1
+
+query T
+SELECT jsonb_path_query('{}', '1 * 2');
+----
+2
+
+query T
+SELECT jsonb_path_query('{}', '1 / 2');
+----
+0.5
+
+query T
+SELECT jsonb_path_query('{}', '3 % 2');
+----
+1
+
+query T
+SELECT jsonb_path_query('{"a": 4, "b": 5}', '$.a + $.b');
+----
+9
+
+query T
+SELECT jsonb_path_query('{"a": 4, "b": 5, "c": [9, 8, 7]}', '$.c[0] + $.c[1]');
+----
+17
+
+query T
+SELECT jsonb_path_query('{"a": 4, "b": 5, "c": [9, 8, 7]}', '$.c[$.b - $.a]');
+----
+8
+
+query T
+SELECT jsonb_path_query('{"a": 4, "b": 5, "c": [9, 8, 7]}', '$.c[$.b - $.a] + $var', '{"var": 10}');
+----
+18
+
 # select jsonb_path_query('[1, 2, 3, 4, 5]', '$[-1]');
 # select jsonb_path_query('[1, 2, 3, 4, 5]', 'strict $[-1]');
 
