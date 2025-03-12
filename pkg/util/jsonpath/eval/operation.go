@@ -10,7 +10,6 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/util/json"
 	"github.com/cockroachdb/cockroach/pkg/util/jsonpath"
 	"github.com/cockroachdb/errors"
@@ -24,8 +23,8 @@ const (
 	jsonpathBoolUnknown
 )
 
-func isBool(j tree.DJSON) bool {
-	switch j.JSON.Type() {
+func isBool(j json.JSON) bool {
+	switch j.Type() {
 	case json.TrueJSONType, json.FalseJSONType:
 		return true
 	default:
@@ -33,14 +32,14 @@ func isBool(j tree.DJSON) bool {
 	}
 }
 
-func convertFromBool(b jsonpathBool) []tree.DJSON {
+func convertFromBool(b jsonpathBool) []json.JSON {
 	switch b {
 	case jsonpathBoolTrue:
-		return []tree.DJSON{{JSON: json.TrueJSONValue}}
+		return []json.JSON{json.TrueJSONValue}
 	case jsonpathBoolFalse:
-		return []tree.DJSON{{JSON: json.FalseJSONValue}}
+		return []json.JSON{json.FalseJSONValue}
 	case jsonpathBoolUnknown:
-		return []tree.DJSON{{JSON: json.NullJSONValue}}
+		return []json.JSON{json.NullJSONValue}
 	default:
 		panic(errors.AssertionFailedf("unhandled jsonpath boolean type"))
 	}
@@ -58,8 +57,8 @@ func convertToBool(j json.JSON) jsonpathBool {
 }
 
 func (ctx *jsonpathCtx) evalOperation(
-	p jsonpath.Operation, current []tree.DJSON,
-) ([]tree.DJSON, error) {
+	p jsonpath.Operation, current []json.JSON,
+) ([]json.JSON, error) {
 	switch p.Type {
 	case jsonpath.OpLogicalAnd, jsonpath.OpLogicalOr, jsonpath.OpLogicalNot:
 		res, err := ctx.evalLogical(p, current)
@@ -84,7 +83,7 @@ func (ctx *jsonpathCtx) evalOperation(
 }
 
 func (ctx *jsonpathCtx) evalLogical(
-	op jsonpath.Operation, current []tree.DJSON,
+	op jsonpath.Operation, current []json.JSON,
 ) (jsonpathBool, error) {
 	left, err := ctx.eval(op.Left, current)
 	if err != nil {
@@ -95,7 +94,7 @@ func (ctx *jsonpathCtx) evalLogical(
 		// TODO(normanchenn): This should be an error.
 		return jsonpathBoolUnknown, nil
 	}
-	leftBool := convertToBool(left[0].JSON)
+	leftBool := convertToBool(left[0])
 	switch op.Type {
 	case jsonpath.OpLogicalAnd:
 		if leftBool == jsonpathBoolFalse {
@@ -126,7 +125,7 @@ func (ctx *jsonpathCtx) evalLogical(
 		// TODO(normanchenn): This should be an error.
 		return jsonpathBoolUnknown, nil
 	}
-	rightBool := convertToBool(right[0].JSON)
+	rightBool := convertToBool(right[0])
 
 	switch op.Type {
 	case jsonpath.OpLogicalAnd:
@@ -149,7 +148,7 @@ func (ctx *jsonpathCtx) evalLogical(
 // satisfy the condition. In strict mode, even if a pair has been found, all
 // pairs need to be checked for errors.
 func (ctx *jsonpathCtx) evalComparison(
-	p jsonpath.Operation, current []tree.DJSON,
+	p jsonpath.Operation, current []json.JSON,
 ) (jsonpathBool, error) {
 	left, err := ctx.eval(p.Left, current)
 	if err != nil {
@@ -191,11 +190,11 @@ func (ctx *jsonpathCtx) evalComparison(
 	return jsonpathBoolFalse, nil
 }
 
-func execComparison(l, r tree.DJSON, op jsonpath.OperationType) (jsonpathBool, error) {
-	if l.JSON.Type() != r.JSON.Type() && !(isBool(l) && isBool(r)) {
+func execComparison(l, r json.JSON, op jsonpath.OperationType) (jsonpathBool, error) {
+	if l.Type() != r.Type() && !(isBool(l) && isBool(r)) {
 		// Inequality comparison of nulls to non-nulls is true. Everything else
 		// is false.
-		if l.JSON.Type() == json.NullJSONType || r.JSON.Type() == json.NullJSONType {
+		if l.Type() == json.NullJSONType || r.Type() == json.NullJSONType {
 			if op == jsonpath.OpCompNotEqual {
 				return jsonpathBoolTrue, nil
 			}
@@ -207,10 +206,10 @@ func execComparison(l, r tree.DJSON, op jsonpath.OperationType) (jsonpathBool, e
 
 	var cmp int
 	var err error
-	switch l.JSON.Type() {
+	switch l.Type() {
 	case json.NullJSONType, json.TrueJSONType, json.FalseJSONType,
 		json.NumberJSONType, json.StringJSONType:
-		cmp, err = l.JSON.Compare(r.JSON)
+		cmp, err = l.Compare(r)
 		if err != nil {
 			return jsonpathBoolUnknown, err
 		}
@@ -245,8 +244,8 @@ func execComparison(l, r tree.DJSON, op jsonpath.OperationType) (jsonpathBool, e
 }
 
 func (ctx *jsonpathCtx) evalArithmetic(
-	p jsonpath.Operation, current []tree.DJSON,
-) ([]tree.DJSON, error) {
+	p jsonpath.Operation, current []json.JSON,
+) ([]json.JSON, error) {
 	left, err := ctx.eval(p.Left, current)
 	if err != nil {
 		return nil, err
@@ -256,16 +255,16 @@ func (ctx *jsonpathCtx) evalArithmetic(
 		return nil, err
 	}
 
-	if len(left) != 1 || left[0].JSON.Type() != json.NumberJSONType {
+	if len(left) != 1 || left[0].Type() != json.NumberJSONType {
 		return nil, pgerror.Newf(pgcode.SingletonSQLJSONItemRequired, "left operand of jsonpath operator %s is not a single numeric value", p.Type)
 	}
-	if len(right) != 1 || right[0].JSON.Type() != json.NumberJSONType {
+	if len(right) != 1 || right[0].Type() != json.NumberJSONType {
 		return nil, pgerror.Newf(pgcode.SingletonSQLJSONItemRequired, "right operand of jsonpath operator %s is not a single numeric value", p.Type)
 	}
 
 	// TODO(normanchenn): do arithmetic properly.
-	leftNum, _ := left[0].JSON.AsDecimal()
-	rightNum, _ := right[0].JSON.AsDecimal()
+	leftNum, _ := left[0].AsDecimal()
+	rightNum, _ := right[0].AsDecimal()
 
 	leftFloat, err := leftNum.Float64()
 	if err != nil {
@@ -293,5 +292,5 @@ func (ctx *jsonpathCtx) evalArithmetic(
 	if err != nil {
 		return nil, err
 	}
-	return []tree.DJSON{{JSON: j}}, nil
+	return []json.JSON{j}, nil
 }
