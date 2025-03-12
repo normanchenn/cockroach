@@ -332,6 +332,17 @@ $ == $
 ----
 ($ == $) -- normalized!
 
+# update once the bracket formatting is corrected.
+parse
+1 == 1 && 1 != 1
+----
+((1 == 1) && (1 != 1)) -- normalized!
+
+parse
+1 == 1 || 1 != 1
+----
+((1 == 1) || (1 != 1)) -- normalized!
+
 # postgres allows floats as array indexes
 # parse
 # $.abc[1.0]
