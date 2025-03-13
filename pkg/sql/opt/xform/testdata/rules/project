@@ -10,6 +10,15 @@ CREATE TABLE a (
 )
 ----
 
+exec-ddl
+CREATE TABLE b (
+    x INT,
+    y INT,
+    z FLOAT,
+    INDEX zyx (z, y, x)
+)
+----
+
 # --------------------------------------------------
 # EliminateIndexJoinInsideProject
 # --------------------------------------------------
@@ -125,3 +134,25 @@ index-join a
       ├── inverted constraint: /8/1
       │    └── spans: ["a"/"b", "a"/"b"]
       └── key: (1)
+
+# --------------------------------------------------
+# EliminatePassthroughProjectOverScan
+# --------------------------------------------------
+
+opt
+SELECT min(x) FROM b WHERE z = 1.0 AND y = 2
+----
+scalar-group-by
+ ├── columns: min:7
+ ├── cardinality: [1 - 1]
+ ├── key: ()
+ ├── fd: ()-->(7)
+ ├── scan b@zyx
+ │    ├── columns: x:1!null y:2!null z:3!null
+ │    ├── constraint: /3/2/1/4: (/1.0/2/NULL - /1.0/2]
+ │    ├── limit: 1
+ │    ├── key: ()
+ │    └── fd: ()-->(1-3)
+ └── aggregations
+      └── const-agg [as=min:7, outer=(1)]
+           └── x:1

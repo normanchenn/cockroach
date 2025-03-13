@@ -10,6 +10,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/cat"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/memo"
 	"github.com/cockroachdb/cockroach/pkg/sql/opt/props"
+	"github.com/cockroachdb/cockroach/pkg/sql/opt/props/physical"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util/intsets"
 )
@@ -242,6 +243,12 @@ func (c *CustomFuncs) NeededMutationFetchCols(
 	}
 
 	return cols
+}
+
+func (c *CustomFuncs) PruneColsExplore(
+	_ memo.RelExpr, _ *physical.Required, target memo.RelExpr, neededCols opt.ColSet,
+) memo.RelExpr {
+	return c.PruneCols(target, neededCols)
 }
 
 // CanPruneCols returns true if the target expression has extra columns that are

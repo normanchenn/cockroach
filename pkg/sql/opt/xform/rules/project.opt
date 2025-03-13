@@ -64,3 +64,14 @@
 )
 =>
 (Project $input $projections $passthrough)
+
+# EliminatePassthroughProjectOverConstrainedScan discards a passthrough Project
+# operator above a Scan operator
+[EliminatePassthroughProjectOverScan, Explore]
+(Project
+    $input:(Scan)
+    $projections:[]
+    $passthrough:*
+)
+=>
+(PruneColsExplore $input $passthrough)
