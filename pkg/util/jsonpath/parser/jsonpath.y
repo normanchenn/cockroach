@@ -100,6 +100,22 @@ func (u *jsonpathSymUnion) arrayList() jsonpath.ArrayList {
   return u.val.(jsonpath.ArrayList)
 }
 
+func (u *jsonpathSymUnion) operationType() jsonpath.OperationType {
+  return u.val.(jsonpath.OperationType)
+}
+
+%}
+
+%{
+
+func binaryOp(op jsonpath.OperationType, left jsonpath.Path, right jsonpath.Path) jsonpath.Operation {
+  return jsonpath.Operation{
+    Type:  op,
+    Left:  left,
+    Right: right,
+  }
+}
+
 %}
 
 %union{
@@ -132,6 +148,13 @@ func (u *jsonpathSymUnion) arrayList() jsonpath.ArrayList {
 %token <str> TRUE
 %token <str> FALSE
 
+%token <str> EQUAL
+%token <str> NOT_EQUAL
+%token <str> LESS
+%token <str> LESS_EQUAL
+%token <str> GREATER
+%token <str> GREATER_EQUAL
+
 %token <str> ROOT
 
 %type <jsonpath.Jsonpath> jsonpath
@@ -143,8 +166,11 @@ func (u *jsonpathSymUnion) arrayList() jsonpath.ArrayList {
 %type <jsonpath.Path> array_accessor
 %type <jsonpath.Path> scalar_value
 %type <jsonpath.Path> index_elem
+%type <jsonpath.Path> predicate
+%type <jsonpath.Path> delimited_predicate
 %type <[]jsonpath.Path> accessor_expr
 %type <[]jsonpath.Path> index_list
+%type <jsonpath.OperationType> comp_op
 %type <str> key_name
 %type <str> any_identifier
 %type <str> unreserved_keyword
@@ -177,6 +203,10 @@ mode:
 
 expr_or_predicate:
   expr
+  {
+    $$.val = $1.path()
+  }
+| predicate
   {
     $$.val = $1.path()
   }
@@ -269,6 +299,51 @@ index_elem:
       Start: $1.path(),
       End: $3.path(),
     }
+  }
+;
+
+predicate:
+  delimited_predicate
+  {
+    $$.val = $1.path()
+  }
+| expr comp_op expr
+  {
+    $$.val = binaryOp($2.operationType(), $1.path(), $3.path())
+  }
+;
+
+delimited_predicate:
+  '(' predicate ')'
+  {
+    $$.val = $2.path()
+  }
+;
+
+comp_op:
+  EQUAL
+  {
+    $$.val = jsonpath.OpCompEqual
+  }
+| NOT_EQUAL
+  {
+    $$.val = jsonpath.OpCompNotEqual
+  }
+| LESS
+  {
+    $$.val = jsonpath.OpCompLess
+  }
+| LESS_EQUAL
+  {
+    $$.val = jsonpath.OpCompLessEqual
+  }
+| GREATER
+  {
+    $$.val = jsonpath.OpCompGreater
+  }
+| GREATER_EQUAL
+  {
+    $$.val = jsonpath.OpCompGreaterEqual
   }
 ;
 

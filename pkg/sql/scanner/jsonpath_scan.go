@@ -50,6 +50,36 @@ func (s *JSONPathScanner) Scan(lval ScanSymType) {
 			lval.SetID(lexbase.IDENT)
 		}
 		return
+	case '=':
+		if s.peek() == '=' { // ==
+			s.pos++
+			lval.SetID(lexbase.EQUAL)
+			return
+		}
+		return
+	case '!':
+		if s.peek() == '=' { // !=
+			s.pos++
+			lval.SetID(lexbase.NOT_EQUAL)
+			return
+		}
+		return
+	case '>':
+		if s.peek() == '=' { // >=
+			s.pos++
+			lval.SetID(lexbase.GREATER_EQUAL)
+			return
+		}
+		lval.SetID(lexbase.GREATER)
+		return
+	case '<':
+		if s.peek() == '=' { // <=
+			s.pos++
+			lval.SetID(lexbase.LESS_EQUAL)
+			return
+		}
+		lval.SetID(lexbase.LESS)
+		return
 	default:
 		if sqllexbase.IsDigit(ch) {
 			s.scanNumber(lval, ch)
