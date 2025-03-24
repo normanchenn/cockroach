@@ -91,10 +91,16 @@ func (ctx *jsonpathCtx) eval(
 		return []json.JSON{jsonValue}, nil
 	case jsonpath.Key:
 		return ctx.evalKey(path, jsonValue, unwrap)
+	case jsonpath.AnyKey:
+		return ctx.evalAnyKey(path, jsonValue, unwrap)
 	case jsonpath.Wildcard:
 		return ctx.evalArrayWildcard(jsonValue)
 	case jsonpath.ArrayList:
 		return ctx.evalArrayList(path, jsonValue)
+	case jsonpath.AnyPath:
+		// TODO: implement.
+		panic("not implemented")
+		// return []json.JSON{jsonValue}, nil
 	case jsonpath.Scalar:
 		resolved, err := ctx.resolveScalar(path)
 		if err != nil {
@@ -149,16 +155,32 @@ func (ctx *jsonpathCtx) executeAnyItem(
 	}
 	var agg []json.JSON
 	for _, item := range childItems {
+		// The only case where the length is 0 is if the jsonValue array is empty.
+		if item.Len() == 0 {
+			continue
+		}
 		if item.Len() != 1 {
 			return nil, errors.AssertionFailedf("unexpected path length")
 		}
-		unwrappedItem, err := item.FetchValIdx(0 /* idx */)
-		if err != nil {
-			return nil, err
+
+		var unwrappedItem json.JSON
+		if item.Type() == json.ArrayJSONType {
+			unwrappedItem, err = item.FetchValIdx(0 /* idx */)
+			if err != nil {
+				return nil, err
+			}
+			if unwrappedItem == nil {
+				return nil, errors.AssertionFailedf("unwrapping json element")
+			}
+		} else if item.Type() == json.ObjectJSONType {
+			iter, _ := item.ObjectIter()
+			// Guaranteed to have one item.
+			_ = iter.Next()
+			unwrappedItem = iter.Value()
+		} else {
+			panic("results from AllPathsWithDepth should only be array or object")
 		}
-		if unwrappedItem == nil {
-			return nil, errors.AssertionFailedf("unwrapping json element")
-		}
+
 		if jsonPath == nil {
 			agg = append(agg, unwrappedItem)
 		} else {

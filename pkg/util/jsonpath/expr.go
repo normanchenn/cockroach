@@ -128,3 +128,29 @@ var _ tree.RegexpCacheKey = Regex{}
 func (r Regex) Pattern() (string, error) {
 	return r.Regex, nil
 }
+
+type AnyKey struct{}
+
+var _ Path = AnyKey{}
+
+func (a AnyKey) String() string { return ".*" }
+
+// TODO: add some documentation about this node.
+// starts from 0, -1 means infinite depth.
+type AnyPath struct {
+	Start int
+	End   int
+}
+
+var _ Path = AnyPath{}
+
+func (a AnyPath) String() string {
+	if a.Start == 0 && a.End == -1 {
+		return ".**"
+	} else if a.Start == a.End {
+		return fmt.Sprintf(".**{%d}", a.Start)
+	} else if a.End == -1 {
+		return fmt.Sprintf(".**{%d to last}", a.Start)
+	}
+	return fmt.Sprintf(".**{%d to %d}", a.Start, a.End)
+}

@@ -459,23 +459,76 @@ $.a ? (@.b like_regex "^[aeiou]")
 ----
 $."a"?((@."b" like_regex "^[aeiou]")) -- normalized!
 
-# postgres allows floats as array indexes
-# parse
-# $.abc[1.0]
-# ----
+parse
+$.abc[1.0]
+----
+$."abc"[1] -- normalized!
 
-# parse
-# $.abc[1.1]
-# ----
+parse
+$.abc[1.1]
+----
+$."abc"[1.1] -- normalized!
 
 # in postgres this becomes $."a"[1000000000]
-# parse
-# $.abc[1e9]
-# ----
+parse
+$.abc[1e9]
+----
+$."abc"[1E+9] -- normalized!
 
-# parse
-# $.abc[0.0]
-# ----
+parse
+$.abc[0.0]
+----
+$."abc"[0] -- normalized!
+
+parse
+$[1.999999999999999]
+----
+$[1.999999999999999]
+
+parse
+$[null]
+----
+$[null]
+
+parse
+$.*
+----
+$.*
+
+parse
+$.abc.*.def
+----
+$."abc".*."def" -- normalized!
+
+parse
+$.**
+----
+$.**
+
+parse
+$.**{0}
+----
+$.**{0}
+
+parse
+$.**{0 to 0}
+----
+$.**{0} -- normalized!
+
+parse
+$.**{0 to 10}
+----
+$.**{0 to 10}
+
+parse
+$.**{0 to last}
+----
+$.** -- normalized!
+
+parse
+$.**{1 to last}
+----
+$.**{1 to last}
 
 # postgres allows negatives as array indexes
 # parse
@@ -487,13 +540,5 @@ $."a"?((@."b" like_regex "^[aeiou]")) -- normalized!
 # ----
 
 # parse
-# $[1.999999999999999]
-# ----
-
-# parse
 # $.1a
-# ----
-
-# parse
-# $[null]
 # ----

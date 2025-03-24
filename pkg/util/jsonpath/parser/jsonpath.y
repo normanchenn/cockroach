@@ -104,6 +104,10 @@ func (u *jsonpathSymUnion) operationType() jsonpath.OperationType {
   return u.val.(jsonpath.OperationType)
 }
 
+func (u *jsonpathSymUnion) int() int {
+  return u.val.(int)
+}
+
 %}
 
 %{
@@ -177,6 +181,9 @@ func unaryOp(op jsonpath.OperationType, left jsonpath.Path) jsonpath.Operation {
 %token <str> LIKE_REGEX
 %token <str> FLAG
 
+%token <str> ANY
+%token <str> LAST
+
 %type <jsonpath.Jsonpath> jsonpath
 %type <jsonpath.Path> expr_or_predicate
 %type <jsonpath.Path> expr
@@ -188,6 +195,7 @@ func unaryOp(op jsonpath.OperationType, left jsonpath.Path) jsonpath.Operation {
 %type <jsonpath.Path> index_elem
 %type <jsonpath.Path> predicate
 %type <jsonpath.Path> delimited_predicate
+%type <jsonpath.Path> any_path
 %type <[]jsonpath.Path> accessor_expr
 %type <[]jsonpath.Path> index_list
 %type <jsonpath.OperationType> comp_op
@@ -195,6 +203,7 @@ func unaryOp(op jsonpath.OperationType, left jsonpath.Path) jsonpath.Operation {
 %type <str> any_identifier
 %type <str> unreserved_keyword
 %type <bool> mode
+%type <int> any_level
 
 %left OR
 %left AND
@@ -311,6 +320,14 @@ accessor_op:
   {
     $$.val = jsonpath.Filter{Condition: $3.path()}
   }
+| '.' '*'
+  {
+    $$.val = jsonpath.AnyKey{}
+  }
+| '.' any_path
+  {
+    $$.val = $2.path()
+  }
 ;
 
 key:
@@ -403,6 +420,39 @@ delimited_predicate:
   }
 ;
 
+any_path:
+  ANY
+  {
+    $$.val = jsonpath.AnyPath{Start: 0, End: -1}
+  }
+| ANY '{' any_level '}'
+  {
+    i := $3.int()
+    $$.val = jsonpath.AnyPath{Start: i, End: i}
+  }
+| ANY '{' any_level TO any_level '}'
+  {
+    i := $3.int()
+    j := $5.int()
+    $$.val = jsonpath.AnyPath{Start: i, End: j}
+  }
+;
+
+any_level:
+  ICONST
+  {
+    i, err := $1.numVal().AsInt64()
+    if err != nil {
+      return setErr(jsonpathlex, err)
+    }
+    $$.val = int(i)
+  }
+| LAST
+  {
+    $$.val = -1
+  }
+;
+
 comp_op:
   EQUAL
   {
@@ -430,6 +480,7 @@ comp_op:
   }
 ;
 
+// TODO(normanchenn): support negative numbers.
 scalar_value:
   VARIABLE
   {
@@ -482,6 +533,7 @@ any_identifier:
 unreserved_keyword:
   FALSE
 | FLAG
+| LAST
 | LAX
 | LIKE_REGEX
 | NULL

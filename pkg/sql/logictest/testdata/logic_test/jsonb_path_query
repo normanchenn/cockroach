@@ -125,6 +125,9 @@ SELECT jsonb_path_query(j, '$.b') FROM b
 ----
 "hello"
 
+query empty
+SELECT jsonb_path_query('[]', '$.a')
+
 query T rowsort
 SELECT jsonb_path_query('{"a": [1, 2, {"b": [4, 5]}, null, [true, false]]}', '$.a[*]')
 ----
@@ -849,9 +852,50 @@ SELECT jsonb_path_query('[{"balance": "987_650", "name": "a"}, {"balance": "987_
 "987_650"
 "987_424"
 
+query T rowsort
+SELECT jsonb_path_query('{"a": [1, 2], "b": "hello"}', '$.a ? ($.b == "hello") ');
+----
+1
+2
+
+query T
+SELECT jsonb_path_query('{"a": [1, 2], "b": "hello"}', 'strict $.a ? ($.b == "hello") ');
+----
+[1, 2]
+
+query T rowsort
+SELECT jsonb_path_query('{"a": 1, "b": false, "c": null}', '$.*');
+----
+1
+false
+null
+
+query T rowsort
+SELECT jsonb_path_query('{"a": {}, "b": {}}', '$.*');
+----
+{}
+{}
+
+query T
+SELECT jsonb_path_query('{"a": {"ab": 1}, "b": {"bc": 2}, "c": {"cd": 3}}', '$.*.bc');
+----
+2
+
+query empty
+SELECT jsonb_path_query('{}', '$.*');
+
+query empty
+SELECT jsonb_path_query('[1, 2, 3, 4, 5]', '$.*');
+----
+
+query empty
+SELECT jsonb_path_query('2', '$.*');
+
+query T rowsort
+SELECT jsonb_path_query('{"a": {"x": {"y": 1}}, "b": {"x": {"z": 2}}}', '$.*.x.*');
+----
+1
+2
+
 # select jsonb_path_query('[1, 2, 3, 4, 5]', '$[-1]');
 # select jsonb_path_query('[1, 2, 3, 4, 5]', 'strict $[-1]');
-
-# interesting functionality
-# select jsonb_path_query('{"a": [1, 2], "b": "hello"}', '$.a ? ($.b == "hello") ');
-# select jsonb_path_query('{"a": [1, 2], "b": "hello"}', '$.a');
