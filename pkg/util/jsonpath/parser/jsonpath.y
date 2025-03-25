@@ -434,6 +434,7 @@ any_path:
   {
     i := $3.int()
     j := $5.int()
+    // TODO: set to int max?
     $$.val = jsonpath.AnyPath{Start: i, End: j}
   }
 ;

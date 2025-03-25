@@ -38,7 +38,7 @@ func (ctx *jsonpathCtx) evalAnyKey(
 	key jsonpath.AnyKey, jsonValue json.JSON, unwrap bool,
 ) ([]json.JSON, error) {
 	if jsonValue.Type() == json.ObjectJSONType {
-		return ctx.executeAnyItem(nil /* jsonPath */, jsonValue, !ctx.strict /* unwrapNext */)
+		return ctx.executeAnyItem(nil /* jsonPath */, jsonValue, !ctx.strict /* unwrapNext */, []json.JSON{}, 1, 1, 1)
 	} else if unwrap && jsonValue.Type() == json.ArrayJSONType {
 		return ctx.unwrapCurrentTargetAndEval(key, jsonValue, false /* unwrapNext */)
 	} else if ctx.strict {

@@ -6,6 +6,8 @@
 package eval
 
 import (
+	"math"
+
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/eval"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
@@ -71,6 +73,7 @@ func JsonpathExists(
 	return len(j) > 0, nil
 }
 
+// TODO: check postgres code for jbvBinary
 func (ctx *jsonpathCtx) eval(
 	jsonPath jsonpath.Path, jsonValue json.JSON, unwrap bool,
 ) ([]json.JSON, error) {
@@ -98,9 +101,15 @@ func (ctx *jsonpathCtx) eval(
 	case jsonpath.ArrayList:
 		return ctx.evalArrayList(path, jsonValue)
 	case jsonpath.AnyPath:
-		// TODO: implement.
-		panic("not implemented")
-		// return []json.JSON{jsonValue}, nil
+		// Do something with current.
+		// Do we need to handle start == 0?
+		if path.End == -1 {
+			path.End = math.MaxInt
+		}
+		if path.Start == -1 {
+			path.Start = math.MaxInt
+		}
+		return ctx.executeAnyItem(jsonPath, jsonValue, unwrap, []json.JSON{}, path.Start, path.End, 0)
 	case jsonpath.Scalar:
 		resolved, err := ctx.resolveScalar(path)
 		if err != nil {
@@ -143,17 +152,27 @@ func (ctx *jsonpathCtx) unwrapCurrentTargetAndEval(
 	if jsonValue.Type() != json.ArrayJSONType {
 		return nil, errors.AssertionFailedf("unwrapCurrentTargetAndEval can only be applied to an array")
 	}
-	return ctx.executeAnyItem(jsonPath, jsonValue, unwrapNext)
+	return ctx.executeAnyItem(jsonPath, jsonValue, unwrapNext, []json.JSON{}, 1, 1, 1)
 }
 
 func (ctx *jsonpathCtx) executeAnyItem(
-	jsonPath jsonpath.Path, jsonValue json.JSON, unwrapNext bool,
+	jsonPath jsonpath.Path,
+	jsonValue json.JSON,
+	unwrapNext bool,
+	current []json.JSON,
+	start int,
+	end int,
+	level int,
 ) ([]json.JSON, error) {
+	if level > end {
+		return current, nil
+	}
+
 	childItems, err := json.AllPathsWithDepth(jsonValue, 1 /* depth */)
 	if err != nil {
 		return nil, err
 	}
-	var agg []json.JSON
+
 	for _, item := range childItems {
 		// The only case where the length is 0 is if the jsonValue array is empty.
 		if item.Len() == 0 {
@@ -181,17 +200,29 @@ func (ctx *jsonpathCtx) executeAnyItem(
 			panic("results from AllPathsWithDepth should only be array or object")
 		}
 
-		if jsonPath == nil {
-			agg = append(agg, unwrappedItem)
-		} else {
-			evalResults, err := ctx.eval(jsonPath, unwrappedItem, unwrapNext)
+		if level >= start {
+			if jsonPath == nil {
+				current = append(current, unwrappedItem)
+			} else {
+				evalResults, err := ctx.eval(jsonPath, unwrappedItem, unwrapNext)
+				if err != nil {
+					return nil, err
+				}
+				current = append(current, evalResults...)
+			}
+		}
+
+		if level < end && (unwrappedItem.Type() == json.ArrayJSONType || unwrappedItem.Type() == json.ObjectJSONType) {
+			res, err := ctx.executeAnyItem(jsonPath, unwrappedItem, unwrapNext, current, start, end, level+1)
 			if err != nil {
 				return nil, err
 			}
-			agg = append(agg, evalResults...)
+			current = append(current, res...)
+			// current = res
 		}
 	}
-	return agg, nil
+
+	return current, nil
 }
 
 // evalAndUnwrapResult is used to evaluate the jsonpath query and unwrap the result

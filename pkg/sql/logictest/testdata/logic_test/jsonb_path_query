@@ -1,6 +1,16 @@
 # LogicTest: !local-mixed-24.3 !local-mixed-25.1
 
 query T
+SELECT jsonb_path_query('{"a": 1}', '$.**');
+----
+1
+
+query T
+SELECT jsonb_path_query('{"a": {"ab": 1}, "b": {"bc": 2}, "c": {"cd": 3}}', '$.**');
+----
+1
+
+query T
 SELECT jsonb_path_query('{}', '$')
 ----
 {}
@@ -896,6 +906,11 @@ SELECT jsonb_path_query('{"a": {"x": {"y": 1}}, "b": {"x": {"z": 2}}}', '$.*.x.*
 ----
 1
 2
+
+query T
+SELECT jsonb_path_query('{"a": {"ab": 1}, "b": {"bc": 2}, "c": {"cd": 3}}', '$.**');
+----
+1
 
 # select jsonb_path_query('[1, 2, 3, 4, 5]', '$[-1]');
 # select jsonb_path_query('[1, 2, 3, 4, 5]', 'strict $[-1]');
