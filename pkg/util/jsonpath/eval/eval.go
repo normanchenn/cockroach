@@ -139,11 +139,12 @@ func (ctx *jsonpathCtx) unwrapCurrentTargetAndEval(
 	return ctx.executeAnyItem(jsonPath, jsonValue, unwrapNext)
 }
 
+// TODO: add comment
 func (ctx *jsonpathCtx) executeAnyItem(
 	jsonPath jsonpath.Path, jsonValue json.JSON, unwrapNext bool,
 ) ([]json.JSON, error) {
 	if jsonValue.Len() == 0 {
-		return []json.JSON{}, nil
+		return nil, nil
 	}
 	var agg []json.JSON
 	processItem := func(item json.JSON) error {
