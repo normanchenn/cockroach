@@ -68,6 +68,9 @@ func (ctx *jsonpathCtx) evalOperation(
 		if err != nil {
 			return nil, err
 		}
+		if results == nil {
+			return []json.JSON{}, nil
+		}
 		return []json.JSON{results}, nil
 	case jsonpath.OpPlus, jsonpath.OpMinus:
 		return ctx.evalUnaryArithmetic(op, jsonValue)
@@ -139,7 +142,7 @@ func (ctx *jsonpathCtx) evalExists(
 ) (jsonpathBool, error) {
 	// TODO(normanchenn): Only in strict mode do we need to evaluate all items.
 	// We can optimize this by short-circuiting in lax mode.
-	l, err := ctx.evalAndUnwrapResult(op.Left, jsonValue, false /* unwrap */)
+	l, err := ctx.evalAndUnwrapResultNoThrow(op.Left, jsonValue, false /* unwrap */)
 	if err != nil {
 		return jsonpathBoolUnknown, nil //nolint:returnerrcheck
 	}
@@ -253,14 +256,14 @@ func (ctx *jsonpathCtx) evalPredicate(
 	evalRight, unwrapRight bool,
 ) (jsonpathBool, error) {
 	// The left argument results are always auto-unwrapped.
-	left, err := ctx.evalAndUnwrapResult(op.Left, jsonValue, true /* unwrap */)
+	left, err := ctx.evalAndUnwrapResultNoThrow(op.Left, jsonValue, true /* unwrap */)
 	if err != nil {
 		return jsonpathBoolUnknown, nil //nolint:returnerrcheck
 	}
 	var right []json.JSON
 	if evalRight {
 		// The right argument results are conditionally evaluated and unwrapped.
-		right, err = ctx.evalAndUnwrapResult(op.Right, jsonValue, unwrapRight)
+		right, err = ctx.evalAndUnwrapResultNoThrow(op.Right, jsonValue, unwrapRight)
 		if err != nil {
 			return jsonpathBoolUnknown, nil //nolint:returnerrcheck
 		}
@@ -405,8 +408,22 @@ func (ctx *jsonpathCtx) evalArithmetic(
 
 	leftNum, _ := left[0].AsDecimal()
 	rightNum, _ := right[0].AsDecimal()
+	res, err := performArithmetic(op, leftNum, rightNum)
+	if err != nil {
+		if ctx.silent {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return json.FromDecimal(*res), nil
+}
+
+func performArithmetic(
+	op jsonpath.Operation, leftNum, rightNum *apd.Decimal,
+) (*apd.Decimal, error) {
 	var res apd.Decimal
 	var cond apd.Condition
+	var err error
 	switch op.Type {
 	case jsonpath.OpAdd:
 		_, err = tree.DecimalCtx.Add(&res, leftNum, rightNum)
@@ -438,5 +455,5 @@ func (ctx *jsonpathCtx) evalArithmetic(
 	if err != nil {
 		return nil, err
 	}
-	return json.FromDecimal(res), nil
+	return &res, nil
 }

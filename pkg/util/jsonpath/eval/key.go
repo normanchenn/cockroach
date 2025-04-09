@@ -20,12 +20,13 @@ func (ctx *jsonpathCtx) evalKey(
 		if err != nil {
 			return nil, err
 		}
-		if val == nil && ctx.strict {
-			return nil, pgerror.Newf(pgcode.SQLJSONMemberNotFound, "JSON object does not contain key %q", string(key))
-		} else if val != nil {
-			return []json.JSON{val}, nil
+		if val == nil {
+			if ctx.strict && !ctx.silent {
+				return nil, pgerror.Newf(pgcode.SQLJSONMemberNotFound, "JSON object does not contain key %q", string(key))
+			}
+			return []json.JSON{}, nil
 		}
-		return []json.JSON{}, nil
+		return []json.JSON{val}, nil
 	} else if unwrap && jsonValue.Type() == json.ArrayJSONType {
 		return ctx.unwrapCurrentTargetAndEval(key, jsonValue, false /* unwrapNext */)
 	} else if ctx.strict {

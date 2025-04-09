@@ -1188,3 +1188,47 @@ query T
 SELECT jsonb_path_query('[1,2,0,3]', '$[*] ? ((2 / @ > 0) is unknown)');
 ----
 0
+
+statement error pgcode 2203A pq: JSON object does not contain key "a"
+SELECT jsonb_path_query('{}', 'strict $.a', '{}', false);
+
+query empty
+SELECT jsonb_path_query('{}', 'strict $.a', '{}', true);
+
+query empty
+SELECT jsonb_path_query('{}', '$.a', '{}', false);
+
+query empty
+SELECT jsonb_path_query('{}', '$.a', '{}', true);
+
+query empty
+SELECT jsonb_path_query('{}', 'strict 0 / 0', '{}', true);
+
+statement error pgcode 22012 pq: division by zero
+SELECT jsonb_path_query('{}', 'strict 0 / 0', '{}', false);
+
+query empty
+SELECT jsonb_path_query('{}', '0 / 0', '{}', true);
+
+statement error pgcode 22012 pq: division by zero
+SELECT jsonb_path_query('{}', '0 / 0', '{}', false);
+
+query T
+SELECT jsonb_path_query('{}', 'strict (0 / 0) < (0 / 0)', '{}', true);
+----
+null
+
+query T
+SELECT jsonb_path_query('{}', 'strict (0 / 0) < (0 / 0)', '{}', false);
+----
+null
+
+query T
+SELECT jsonb_path_query('{}', '(0 / 0) < (0 / 0)', '{}', true);
+----
+null
+
+query T
+SELECT jsonb_path_query('{}', '(0 / 0) < (0 / 0)', '{}', false);
+----
+null

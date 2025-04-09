@@ -12188,7 +12188,7 @@ func makeJsonpathExists(_ context.Context, _ *eval.Context, args tree.Datums) (t
 	target := tree.MustBeDJSON(args[0])
 	path := tree.MustBeDJsonpath(args[1])
 	vars := tree.EmptyDJSON
-	silent := tree.DBool(false)
+	silent := tree.DBool(true)
 	if len(args) > 2 {
 		vars = tree.MustBeDJSON(args[2])
 	}

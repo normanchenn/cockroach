@@ -25,6 +25,7 @@ type jsonpathCtx struct {
 	root   json.JSON
 	vars   json.JSON
 	strict bool
+	silent bool
 
 	// innermostArrayLength stores the length of the innermost array. If the current
 	// evaluation context is not evaluating on an array, this value is -1.
@@ -44,11 +45,8 @@ func JsonpathQuery(
 		root:                 target.JSON,
 		vars:                 vars.JSON,
 		strict:               expr.Strict,
+		silent:               bool(silent),
 		innermostArrayLength: -1,
-	}
-	// When silent is true, overwrite the strict mode.
-	if bool(silent) {
-		ctx.strict = false
 	}
 
 	j, err := ctx.eval(expr.Path, ctx.root, !ctx.strict /* unwrap */)
@@ -187,6 +185,17 @@ func (ctx *jsonpathCtx) executeAnyItem(
 		panic(errors.AssertionFailedf("executeAnyItem called with type: %s", jsonValue.Type()))
 	}
 	return agg, nil
+}
+
+func (ctx *jsonpathCtx) evalAndUnwrapResultNoThrow(
+	jsonPath jsonpath.Path, jsonValue json.JSON, unwrap bool,
+) ([]json.JSON, error) {
+	silent := ctx.silent
+	ctx.silent = false
+	defer func() {
+		ctx.silent = silent
+	}()
+	return ctx.evalAndUnwrapResult(jsonPath, jsonValue, unwrap)
 }
 
 // evalAndUnwrapResult is used to evaluate the jsonpath query and unwrap the result
