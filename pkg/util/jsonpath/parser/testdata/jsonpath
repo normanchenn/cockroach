@@ -599,6 +599,21 @@ $.a.type()
 ----
 $."a".type() -- normalized!
 
+parse
+$.a.abs()
+----
+$."a".abs() -- normalized!
+
+parse
+$.a.floor()
+----
+$."a".floor() -- normalized!
+
+parse
+$.a.ceiling()
+----
+$."a".ceiling() -- normalized!
+
 # Postgres outputs $."abc"[1.0]. This might be a limitation of the apd library.
 parse
 $.abc[1.0]
