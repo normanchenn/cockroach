@@ -33,9 +33,55 @@ func (ctx *jsonpathCtx) evalMethod(
 		return []json.JSON{json.FromString(t)}, nil
 	case jsonpath.AbsMethod, jsonpath.FloorMethod, jsonpath.CeilingMethod:
 		return ctx.evalNumericMethod(method, jsonValue, unwrap)
+	case jsonpath.BooleanMethod:
+		return ctx.evalBooleanMethod(method, jsonValue, unwrap)
 	default:
 		return nil, errUnimplemented
 	}
+}
+
+func newInvalidBooleanArgError(arg string, method jsonpath.MethodType) error {
+	return pgerror.Newf(pgcode.NonNumericSQLJSONItem,
+		"argument %q of jsonpath item method .%s() is invalid for type boolean",
+		arg,
+		jsonpath.MethodTypeStrings[method],
+	)
+}
+
+func (ctx *jsonpathCtx) evalBooleanMethod(
+	jsonPath jsonpath.Path, jsonValue json.JSON, unwrap bool,
+) ([]json.JSON, error) {
+	if unwrap && jsonValue.Type() == json.ArrayJSONType {
+		return ctx.unwrapCurrentTargetAndEval(jsonPath, jsonValue, false /* unwrap */)
+	}
+	var b bool
+	method, _ := jsonPath.(jsonpath.Method)
+	switch jsonValue.Type() {
+	case json.TrueJSONType, json.FalseJSONType:
+		b = jsonValue.Type() == json.TrueJSONType
+	case json.NumberJSONType:
+		dec, _ := jsonValue.AsDecimal()
+		i64, err := dec.Int64()
+		if err != nil {
+			return nil, maybeThrowError(ctx, newInvalidBooleanArgError(jsonValue.String(), method.Type))
+		}
+		if _, err := validateInt32Range(i64); err != nil {
+			return nil, maybeThrowError(ctx, newInvalidBooleanArgError(jsonValue.String(), method.Type))
+		}
+		b = i64 != 0
+	case json.StringJSONType:
+		text, _ := jsonValue.AsText()
+		parsed, err := tree.ParseBool(*text)
+		if err != nil {
+			return nil, maybeThrowError(ctx, newInvalidBooleanArgError(*text, method.Type))
+		}
+		b = parsed
+	default:
+		return nil, maybeThrowError(ctx, pgerror.Newf(pgcode.NonNumericSQLJSONItem,
+			"jsonpath item method .%s() can only be applied to a boolean, string, or numeric value",
+			jsonpath.MethodTypeStrings[method.Type]))
+	}
+	return []json.JSON{json.FromBool(b)}, nil
 }
 
 func (ctx *jsonpathCtx) evalSize(jsonValue json.JSON) (int, error) {

@@ -1800,3 +1800,83 @@ SELECT jsonb_path_query('"1"', '$.abs()');
 
 statement error pgcode 22036 pq: jsonpath item method .floor\(\) can only be applied to a numeric value
 SELECT jsonb_path_query('{}', '(null).floor()');
+
+query T
+SELECT jsonb_path_query('true', '$.boolean()');
+----
+true
+
+query T
+SELECT jsonb_path_query('false', '$.boolean()');
+----
+false
+
+statement error pgcode 22036 pq: jsonpath item method .boolean\(\) can only be applied to a boolean, string, or numeric value
+SELECT jsonb_path_query('null', '$.boolean()');
+
+statement error pgcode 22036 pq: jsonpath item method .boolean\(\) can only be applied to a boolean, string, or numeric value
+SELECT jsonb_path_query('{}', '$.boolean()');
+
+query empty
+SELECT jsonb_path_query('[]', '$.boolean()');
+
+query T
+SELECT jsonb_path_query('123', '$.boolean()');
+----
+true
+
+query T
+SELECT jsonb_path_query('0', '$.boolean()');
+----
+false
+
+query T
+SELECT jsonb_path_query('-123', '$.boolean()');
+----
+true
+
+statement error pgcode 22036 pq: argument "123.1" of jsonpath item method .boolean\(\) is invalid for type boolean
+SELECT jsonb_path_query('123.1', '$.boolean()');
+
+# Postgres returns an error, since it's not a integer.
+query T
+SELECT jsonb_path_query('0.0', '$.boolean()');
+----
+false
+
+statement error pgcode 22036 pq: argument "hello" of jsonpath item method .boolean\(\) is invalid for type boolean
+SELECT jsonb_path_query('"hello"', '$.boolean()');
+
+query T
+SELECT jsonb_path_query('"t"', '$.boolean()');
+----
+true
+
+query T
+SELECT jsonb_path_query('"yes"', '$.boolean()');
+----
+true
+
+query T
+SELECT jsonb_path_query('"no"', '$.boolean()');
+----
+false
+
+# math.MaxInt32 + 1
+statement error pgcode 22036 pq: argument "2147483648" of jsonpath item method .boolean\(\) is invalid for type boolean
+SELECT jsonb_path_query('2147483648', '$.boolean()');
+
+query T rowsort
+SELECT jsonb_path_query('["f", "false", "no", false, true, "yes", "true", "t"]', '$.boolean()');
+----
+false
+false
+false
+false
+true
+true
+true
+true
+
+query empty
+SELECT jsonb_path_query('["f", "false", "no", false, true, "yes", "true", "t"]', 'strict $.boolean()', '{}', true);

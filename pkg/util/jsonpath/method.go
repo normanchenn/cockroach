@@ -21,6 +21,7 @@ const (
 	AbsMethod
 	FloorMethod
 	CeilingMethod
+	BooleanMethod
 )
 
 var MethodTypeStrings = map[MethodType]string{
@@ -29,6 +30,7 @@ var MethodTypeStrings = map[MethodType]string{
 	AbsMethod:     "abs",
 	FloorMethod:   "floor",
 	CeilingMethod: "ceiling",
+	BooleanMethod: "boolean",
 }
 
 type Method struct {
@@ -39,7 +41,7 @@ var _ Path = Method{}
 
 func (m Method) ToString(sb *strings.Builder, _, _ bool) {
 	switch m.Type {
-	case SizeMethod, TypeMethod, AbsMethod, FloorMethod, CeilingMethod:
+	case SizeMethod, TypeMethod, AbsMethod, FloorMethod, CeilingMethod, BooleanMethod:
 		sb.WriteString(fmt.Sprintf(".%s()", MethodTypeStrings[m.Type]))
 	default:
 		panic(errors.AssertionFailedf("unhandled method type: %d", m.Type))

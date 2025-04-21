@@ -540,7 +540,7 @@ method:
   }
 | BOOLEAN
   {
-    return unimplemented(jsonpathlex, ".boolean()")
+    $$.val = jsonpath.Method{Type: jsonpath.BooleanMethod}
   }
 | DATE
   {
